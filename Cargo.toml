@@ -4,3 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+bpe-tokenizer = "0.1.4"
+tch = "0.20.0"
