@@ -1,5 +1,7 @@
 use std::fs::File;
 use std::io::prelude::*;
+//includes dataset.rs in compilation
+mod dataset;
 
 
 fn main() {
