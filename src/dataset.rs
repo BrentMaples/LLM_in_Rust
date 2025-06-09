@@ -4,7 +4,8 @@ use tch::{Tensor, Kind};
 use tiktoken_rs::r50k_base;
 use tiktoken_rs::CoreBPE;
 
-//at the moment, implementing GPTDataset from my notes
+
+//at the moment, implementing GPTDataset from my notes -- equiv to pytorch dataset in rust
 pub struct GPTDataset{
     pub input_ids: Vec<Tensor>,
     pub target_ids: Vec<Tensor>,
@@ -13,7 +14,6 @@ pub struct GPTDataset{
     pub stride: usize,
     // implement token_ids using BPE encoding here or pass tokenizer
     // and call tokenizer here using its method
-    pub tokenizer: CoreBPE
 }
 
 //no init in rust
@@ -29,10 +29,9 @@ impl GPTDataset {
         //pytorch wrapper tensors
         let mut input_ids: Vec<Tensor> = Vec::new();
         let mut target_ids: Vec<Tensor> = Vec::new();
-        // Equivalent to: tokenizer = tiktoken.get_encoding("gpt2")        
-        let tokenizer = r50k_base().unwrap();
         let token_ids: Vec<u32> = tokenizer.encode_with_special_tokens(&txt);
-                
+        println!("Token count: {}", token_ids.len());
+    
         //this is where I would do the tokenizer stuff here
         let loop_range = token_ids.len() - max_len;
 
@@ -48,8 +47,10 @@ impl GPTDataset {
             let target_tensor = Tensor::from_slice(
                 &target_chunk.iter().map(|&x| x as i64).collect::<Vec<_>>(),
             ).to_kind(Kind::Int64);
+            
+            input_ids.push(input_tensor);
+            target_ids.push(target_tensor);
 
-        
         }
         //required to return the changes made in this init
         Self {
@@ -57,16 +58,15 @@ impl GPTDataset {
             target_ids,
             txt,
             max_len,
-            stride,
-            tokenizer,
+            stride
         }
 
     }
-    //must ref self at all times
-    // should still be right bc of it being a tensor
-    pub fn inp_len(&self) -> usize{
-        return self.input_ids.len();
-    }
+
+    pub fn len(&self) -> usize {
+            self.input_ids.len()
+        }
+    
 
     
     pub fn get_item(&self, index:usize) -> (&Tensor, &Tensor){
@@ -74,6 +74,3 @@ impl GPTDataset {
         return (&self.input_ids[index], &self.target_ids[index]);
     }
 }
-
-
-//Now let us implement the dataloader
