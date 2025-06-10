@@ -2,13 +2,14 @@
 use std::fs::File;
 use std::io::prelude::*;
 use tiktoken_rs::r50k_base;
-use tch::{Tensor, nn::Module, nn, Device};
+use tch::{Tensor, nn::Module, nn, Device, Kind};
 use tch::nn::{EmbeddingConfig, embedding};
 //includes dataset.rs fcns
 mod dataset;
 mod mha;
 //includes class implementations 
 use crate::dataset::GPTDataset;
+use crate::mha::MultiHeadAttention;
 
 
 
@@ -50,9 +51,25 @@ fn main() {
     */
     //Begin Efficient Multi-Head Attention Implementation
     
+    //init tensor
+    let inputs = Tensor::from_slice(&[
+        0.43, 0.15, 0.89,  // x^1
+        0.55, 0.87, 0.66,  // x^2
+        0.57, 0.85, 0.64,  // x^3
+        0.22, 0.58, 0.33,  // x^4
+        0.77, 0.25, 0.10,  // x^5
+        0.05, 0.80, 0.55   // x^6
+    ])
+    .reshape(&[6, 3])
+    .to_kind(Kind::Float);//need reshape
     
     
-    
+    let batch = Tensor::stack(&[&inputs, &inputs], 0);
+    //extracting shape from vec
+    let [batch_size, context_length, d_in]: [i64; 3] = batch.size().try_into().unwrap();
+    let d_out = 2;
+    let num_heads = 2;
+    let mha = MultiHeadAttention::init(root,d_in, d_out, context_length, 0.0, num_heads, false);
     
     
     

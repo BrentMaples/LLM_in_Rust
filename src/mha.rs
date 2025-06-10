@@ -1,7 +1,6 @@
 //This is the Multi-Head Attention implementation in Rust
-use tch::{Tensor, nn::Module, nn, Device};
-use tch::nn::{LinearConfig, Linear, linear};
-
+use tch::{Tensor, Device, Kind, nn};
+use tch::nn::{LinearConfig, Linear, linear, Module};
 
 pub struct MultiHeadAttention{
     pub d_out: i64,
@@ -10,14 +9,16 @@ pub struct MultiHeadAttention{
     pub W_key: Linear,
     pub W_value: Linear,
     pub out_proj: Linear,
-    pub dropout: f32,
-    pub head_dim: i64
+    pub dropout_val: f64,
+   // pub dropout: Tensor, //use it on tensor we are modifying, not like python. Call it on attn_weights tensor as a dropout
+    pub head_dim: i64,
     //register buff will be a fcn call that I create myself 
+    pub mask: Tensor// I guess this is how I will do the register_buffer
 }
 
 impl MultiHeadAttention{
     //vs is root call for var store
-    pub fn init(vs: &nn::Path,d_in:i64,d_out:i64, context_length: i32, dropout: f32, num_heads: i64, qkv_bias: bool) -> Self{
+    pub fn init(vs: &nn::Path,d_in:i64,d_out:i64, context_length: i64, dropout_val: f64, num_heads: i64, qkv_bias: bool) -> Self{
         
         let d_out = d_out;
         let num_heads = num_heads;
@@ -33,7 +34,11 @@ impl MultiHeadAttention{
         
         let out_proj = linear(vs, d_out, d_out, config);
         
-        //Now we need to implement dropout and the register_buffer
+        
+        //Now we need to implement dropout and the register buffer
+        let dropout_val = dropout_val; // dropout is registered differently
+        //now for the register buffer
+        let mask = Tensor::ones([context_length,context_length], (Kind::Float, Device::Cpu)).triu(1);
         Self {
             d_out,
             num_heads,
@@ -42,7 +47,14 @@ impl MultiHeadAttention{
             W_key,
             W_value,
             out_proj,
-            dropout
+            dropout_val,
+            mask
         }
+    }
+    
+    pub fn forward(x: Tensor) -> Tensor{
+        let [b, num_tokens, d_in]: [i64; 3] = x.size().try_into().unwrap();
+        println!("{:?}", x);
+        return x;
     }
 }
