@@ -6,6 +6,7 @@ use tch::{Tensor, nn::Module, nn, Device};
 use tch::nn::{EmbeddingConfig, embedding};
 //includes dataset.rs fcns
 mod dataset;
+mod mha;
 //includes class implementations 
 use crate::dataset::GPTDataset;
 
@@ -42,10 +43,19 @@ fn main() {
     println!("Inputs shape: {:?}", input_batch.size());
     let embedded = token_embedding_layer.forward(&input_batch);
     println!("Embedded shape: {:?}", embedded.size());
+    
     /*
     At this point in the code I have done the relative position approach for token embeddings. This is what I would consider the first step of the LLM journey.
     The next step now is to implement the attention mechanism.
     */
+    //Begin Efficient Multi-Head Attention Implementation
+    
+    
+    
+    
+    
+    
+    
     return;
 
 }
