@@ -12,8 +12,6 @@ pub struct GPTDataset{
     pub txt: String,
     pub max_len: usize,
     pub stride: usize,
-    // implement token_ids using BPE encoding here or pass tokenizer
-    // and call tokenizer here using its method
 }
 
 //no init in rust
@@ -30,7 +28,7 @@ impl GPTDataset {
         let mut input_ids: Vec<Tensor> = Vec::new();
         let mut target_ids: Vec<Tensor> = Vec::new();
         let token_ids: Vec<u32> = tokenizer.encode_with_special_tokens(&txt);
-        println!("Token count: {}", token_ids.len());
+        //println!("Token count: {}", token_ids.len());
     
         //this is where I would do the tokenizer stuff here
         let loop_range = token_ids.len() - max_len;
@@ -66,8 +64,6 @@ impl GPTDataset {
     pub fn len(&self) -> usize {
             self.input_ids.len()
         }
-    
-
     
     pub fn get_item(&self, index:usize) -> (&Tensor, &Tensor){
         //must be a tuple for returning
