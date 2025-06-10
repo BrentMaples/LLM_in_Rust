@@ -74,3 +74,22 @@ impl GPTDataset {
         return (&self.input_ids[index], &self.target_ids[index]);
     }
 }
+
+pub fn batch_printing(batch_size: usize, dataset: GPTDataset) -> (Tensor, Tensor){
+    let mut input_batch: Tensor = Tensor::new();
+    let mut target_batch: Tensor = Tensor::new();
+    for batch_start in (0..dataset.len()).step_by(batch_size) {
+        let batch_end = (batch_start + batch_size).min(dataset.len());
+        let inputs: Vec<_> = (batch_start..batch_end)
+            .map(|i| dataset.input_ids[i].shallow_clone())
+            .collect();
+        let targets: Vec<_> = (batch_start..batch_end)
+            .map(|i| dataset.target_ids[i].shallow_clone())
+            .collect();
+
+        input_batch = Tensor::stack(&inputs, 0);
+        target_batch = Tensor::stack(&targets, 0);
+        break; // only one batch for demonstration
+    }   
+    return (input_batch, target_batch);
+}

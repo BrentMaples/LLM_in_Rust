@@ -34,29 +34,15 @@ fn main() {
     let default_config = EmbeddingConfig::default();
     let token_embedding_layer = nn::embedding(root, vocab_size, output_dim, default_config);
 
-    //now we simulate printing
-    for batch_start in (0..dataset.len()).step_by(batch_size) {
-        let batch_end = (batch_start + batch_size).min(dataset.len());
-        let inputs: Vec<_> = (batch_start..batch_end)
-            .map(|i| dataset.input_ids[i].shallow_clone())
-            .collect();
-        let targets: Vec<_> = (batch_start..batch_end)
-            .map(|i| dataset.target_ids[i].shallow_clone())
-            .collect();
+    //now we simulate printing - this only does one iteration for the time being before breaking
+    let (input_batch, target_batch) = dataset::batch_printing(batch_size, dataset);      
+    println!("Token IDs:\n{:?}", input_batch.print()); 
+    println!("Total elements: {}", input_batch.numel());
+    println!("\nInputs shape: {:?}", input_batch.size());
+    let embedded = token_embedding_layer.forward(&input_batch);
+    println!("Embedded shape: {:?}", embedded.size());
 
-        let input_batch = Tensor::stack(&inputs, 0);
-        let target_batch = Tensor::stack(&targets, 0);
-
-        println!("Token IDs:\n{:?}", input_batch);
-        println!("\nInputs shape: {:?}", input_batch.size());
-
-        let embedded = token_embedding_layer.forward(&input_batch);
-        println!("Embedded shape: {:?}", embedded.size());
-
-        break; // only one batch for demonstration
-        
-    }
-
+    
     return;
 
 }
