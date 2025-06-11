@@ -1,3 +1,5 @@
+use core::{f64, num};
+
 //This is the Multi-Head Attention implementation in Rust
 use tch::{Tensor, Device, Kind, nn};
 use tch::nn::{LinearConfig, Linear, linear, Module};
@@ -13,7 +15,8 @@ pub struct MultiHeadAttention{
    // pub dropout: Tensor, //use it on tensor we are modifying, not like python. Call it on attn_weights tensor as a dropout
     pub head_dim: i64,
     //register buff will be a fcn call that I create myself 
-    pub mask: Tensor// I guess this is how I will do the register_buffer
+    pub mask: Tensor,// I guess this is how I will do the register_buffer,
+    pub train: bool
 }
 
 impl MultiHeadAttention{
@@ -48,7 +51,8 @@ impl MultiHeadAttention{
             W_value,
             out_proj,
             dropout_val,
-            mask
+            mask,
+            train: true //default val for train
         }
     }
     
@@ -60,10 +64,52 @@ impl MultiHeadAttention{
         let mut queries = self.W_query.forward(&x);
         let mut values = self.W_value.forward(&x);
         
-        //How do I make this work?
-        keys = keys.view(b, num_tokens, self.num_heads, self.head_dim));
+        let new_shape = [b, num_tokens, self.num_heads, self.head_dim];
+        //view and reshape are similar here. We want my tensor to look at the same data so we use view here.
+        //view will fail and never copy while reshape CAN copy if the tensors are not contiguous.
+        //No errors were raised so it is irrelevant here.
+        //keys = keys.reshape(&*new_shape);
+        //These are reshaped dimensions
+        keys = keys.view(new_shape); 
+        queries = queries.view(new_shape);
+        values = values.view(new_shape);
         
+        // transpose: (b, num_tokens, num_heads, head_dim) -> (b, num_heads, num_tokens, head_dim)
+        keys = keys.transpose(1, 2);
+        queries = queries.transpose(1, 2);
+        values = values.transpose(1, 2);
+
+        //now dot product for each head
+        let mut attn_scores = queries.matmul(&(keys.transpose(2, 3)));
         
-        return x;
+        //first convert tensor to a bool mask - Kind is a typecast.
+        let bool_tens = self.mask.to_kind(Kind::Bool);
+        //then I build the slicing by dim, equiv to [:num, num:] in python
+        let mask_bool = bool_tens
+                        .narrow(0,0,num_tokens)
+                        .narrow(1,0,num_tokens);
+        //using the mask to fill attention scores
+        attn_scores.masked_fill_(&mask_bool, f64::NEG_INFINITY);
+        
+        //to get last element -> *keys.size() returns Vec<i64> -> .last for vec -> .unwrap for element
+        let last_element = *keys.size().last().unwrap() as f64;
+        let mut attn_weights = Tensor::softmax(&(attn_scores/ last_element.powf(0.5)) , -1, (Kind::Float));
+        attn_weights = Tensor::dropout(&attn_weights, self.dropout_val, self.train);
+
+        let mut context_vec = (attn_weights.matmul(&values)).transpose(1, 2);
+        context_vec = context_vec.contiguous().view([b, num_tokens, self.d_out]);
+        
+        //optional linear projection - applies linear transformation of out_proj on context_vec
+        context_vec = self.out_proj.forward(&context_vec);
+        return context_vec;
+    }
+
+    //for the sake of train and eval, we will do this
+    pub fn train(&mut self) {
+        self.train = true;
+    }
+
+    pub fn eval(&mut self) {
+        self.train = false;
     }
 }

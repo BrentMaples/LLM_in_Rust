@@ -51,7 +51,7 @@ fn main() {
     */
     //Begin Efficient Multi-Head Attention Implementation
     
-    //init tensor
+    //Initializing tensor
     let inputs = Tensor::from_slice(&[
         0.43, 0.15, 0.89,  // x^1
         0.55, 0.87, 0.66,  // x^2
@@ -70,7 +70,10 @@ fn main() {
     let d_out = 2;
     let num_heads = 2;
     let mha = MultiHeadAttention::init(root,d_in, d_out, context_length, 0.0, num_heads, false);
-    
+    //mha is an instance of MHA, so do . notation 
+    let context_vecs = mha.forward(batch);
+    println!("Tensors after MHA:");
+    context_vecs.print();
     
     
     return;
