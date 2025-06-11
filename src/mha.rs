@@ -52,9 +52,18 @@ impl MultiHeadAttention{
         }
     }
     
-    pub fn forward(x: Tensor) -> Tensor{
+    pub fn forward(&self,x: Tensor) -> Tensor{
         let [b, num_tokens, d_in]: [i64; 3] = x.size().try_into().unwrap();
-        println!("{:?}", x);
+        //println!("{:?}", x);
+        //tensor shape for arrays
+        let mut keys = self.W_key.forward(&x);
+        let mut queries = self.W_query.forward(&x);
+        let mut values = self.W_value.forward(&x);
+        
+        //How do I make this work?
+        keys = keys.view(b, num_tokens, self.num_heads, self.head_dim));
+        
+        
         return x;
     }
 }
