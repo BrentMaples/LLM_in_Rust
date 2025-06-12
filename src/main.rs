@@ -7,6 +7,9 @@ use tch::nn::{EmbeddingConfig, embedding};
 //includes dataset.rs fcns
 mod dataset;
 mod mha;
+mod architecture;
+mod ffn_layer;
+use crate::architecture::CONFIG_124M;
 //includes class implementations 
 use crate::dataset::GPTDataset;
 use crate::mha::MultiHeadAttention;
@@ -15,6 +18,8 @@ use crate::mha::MultiHeadAttention;
 
 fn main() {
     tch::manual_seed(123);
+
+    /* Here begins the tokenization methods to be used in our LLM */
     //Reading the file in and making it a txt
     let file_path = "./data/the_verdict.txt";
     let mut file = File::open(file_path).expect("File Path Invalid");
@@ -75,9 +80,25 @@ fn main() {
     let mha = MultiHeadAttention::init(root,d_in, d_out, context_length, 0.0, num_heads, false);
     //mha is an instance of MHA, so do . notation 
     let context_vecs = mha.forward(batch);
-    println!("Tensors after MHA:");
-    context_vecs.print();
+    // println!("Tensors after MHA:");
+    // context_vecs.print();
     
+
+    /* Now that Multi-Head Attention has been implemented efficiently, we will now carry on to building the LLM architecture.
+        This includes the transformer block, model, and text conversion. */
+
+    // Let us create the struct for our configuration
+    let model_config = CONFIG_124M{
+        vocab_size: 50257,
+        context_length: 256,
+        emb_dim: 768,
+        n_heads: 12,
+        n_layers: 12,
+        drop_rate: 0.1,
+        qkv_bias: false
+    };
+    
+
     
     return;
 
