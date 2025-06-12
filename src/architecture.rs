@@ -1,11 +1,12 @@
 //This is the architecture file for my LLM
 use crate::mha::MultiHeadAttention;
-use tch::{nn::{self, embedding, linear, Embedding, EmbeddingConfig, Init, Linear, SequentialT}, Device, Tensor};
+use tch::{nn::{self, embedding, linear, Embedding, EmbeddingConfig, Init, Linear, SequentialT}, no_grad, Device, Tensor};
 use crate::ffn_layer::{LayerNorm, FeedForward};
 use tch::nn::{LinearConfig,Module};
 use tch::nn::init::{NormalOrUniform, FanInOut, NonLinearity, DEFAULT_KAIMING_UNIFORM};
 use tch::nn::ModuleT; 
 use tch::Kind;
+
 
 
 pub struct CONFIG_124M{
@@ -47,7 +48,7 @@ impl ModuleT for TransformerBlock {
     fn forward_t(&self, x: &Tensor, train: bool) -> Tensor {
         let shortcut1 = x;
         let mut out = self.norm_1.forward(x);
-        out = self.att.forward(&out);
+        out = self.att.forward_t(&out, train);
         out = out.dropout(self.drop_shortcut, train);
         out = out + shortcut1;
 
@@ -59,7 +60,7 @@ impl ModuleT for TransformerBlock {
     }
 }
 
-
+#[derive(Debug)]
 pub struct GPTModel{
     pub tok_emb: Embedding,
     pub pos_emb: Embedding,
@@ -103,32 +104,45 @@ impl GPTModel{
         let out_head = linear(root, cfg.emb_dim, cfg.vocab_size, lin_config);
         Self { tok_emb, pos_emb , drop_val: cfg.drop_rate, trf_blocks, final_norm, out_head}
     }
+}
+//makes this 
+impl ModuleT for GPTModel{
+        fn forward_t(&self, in_idx: &Tensor, train:bool) -> Tensor {
+            let [batch_size, seq_len]: [i64; 2] = in_idx.size().try_into().unwrap();
+            let tok_embeds = self.tok_emb.forward(&in_idx);
+            //allows us to train data with a CPU or GPU, depending on which device the input data sits on
+            let pos_embed_inp = Tensor::arange(seq_len, (Kind::Int64, Device::Cpu));
+            let pos_embeds = self.pos_emb.forward(&pos_embed_inp);
 
+            let mut x = tok_embeds + pos_embeds;
+            x = x.dropout(self.drop_val,train);
+            x = self.trf_blocks.forward_t(&x, train);
+            x = self.final_norm.forward(&x);
 
-    pub fn forward(&self, in_idx: &Tensor, train:bool) -> Tensor {
-        let [batch_size, seq_len]: [i64; 2] = in_idx.size().try_into().unwrap();
-        let tok_embeds = self.tok_emb.forward(&in_idx);
-        //allows us to train data with a CPU or GPU, depending on which device the input data sits on
-        let pos_embed_inp = Tensor::arange(seq_len, (Kind::Int64, Device::Cpu));
-        let pos_embeds = self.pos_emb.forward(&pos_embed_inp);
+            let logits = self.out_head.forward(&x);
 
-        let mut x = tok_embeds + pos_embeds;
-        x = x.dropout(self.drop_val,train);
-        x = self.trf_blocks.forward_t(&x, train);
-        x = self.final_norm.forward(&x);
-
-        let logits = self.out_head.forward(&x);
-
-        return logits;
-
-
+            return logits;
     }
 }
 
+pub fn generate_text_simple(model: GPTModel, idx: &Tensor, max_new_tokens: i64, context_size: i64, train: bool) -> Tensor {
+   
+    let mut idx = idx.unsqueeze(0);
 
-pub fn generate_text_simple(model: GPTModel, encoded: Tensor, max_new_tokens: i64, context_size: i64){
     for _ in 0..max_new_tokens {
         //grab the last of each (since we do this for next-word prediction)
-        let idx_cond = encoded.slice(1, encoded.size()[1] - context_size, encoded.size()[1], 1);
+        let idx_cond = idx.slice(1, idx.size()[1] - context_size, idx.size()[1], 1);
+        //FnOnce implementation for no_grad, so expects || (no args) and returns T (ambiguous type)
+        let mut logits = no_grad(|| {model.forward_t(&idx_cond, train)});
+        //Focuses only on the last time step so that (batch, n_token, vocab_size) becomes (batch, vocab_size)
+        //choose dim 1 since n_token = dim 1. We get the last token and then remove the n_token dimension
+        logits = logits.slice(1, logits.size()[1] - 1, logits.size()[1], 1).squeeze_dim(1);
+
+        let probas = Tensor::softmax(&logits, -1, Kind::Float);
+
+        let idx_next = Tensor::argmax(&probas, -1, true);
+
+        idx = Tensor::cat(&[idx, idx_next], 1);
     }
+    return idx;
 }

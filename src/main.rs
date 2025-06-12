@@ -9,16 +9,18 @@ mod dataset;
 mod mha;
 mod architecture;
 mod ffn_layer;
-use crate::architecture::{CONFIG_124M, TransformerBlock, GPTModel};
+use crate::architecture::{generate_text_simple, GPTModel, TransformerBlock, CONFIG_124M};
 //includes class implementations 
 use crate::dataset::GPTDataset;
 use crate::mha::MultiHeadAttention;
 use tch::nn::ModuleT;
-
+use tch::CModule;
 
 
 
 fn main() {
+
+    let train = true;
     tch::manual_seed(123);
 
     /* Here begins the tokenization methods to be used in our LLM */
@@ -81,7 +83,7 @@ fn main() {
     let num_heads = 2;
     let mha = MultiHeadAttention::init(root,d_in, d_out, context_length, 0.0, num_heads, false);
     //mha is an instance of MHA, so do . notation 
-    let context_vecs = mha.forward(&batch);
+    let context_vecs = mha.forward_t(&batch, train);
     // println!("Tensors after MHA:");
     // context_vecs.print();
     
@@ -132,15 +134,45 @@ fn main() {
 
     let batch = Tensor::stack(&batch_vec, 0);
     // python is much better at making instances for use
-    let model = GPTModel::init(&model_config, root);
-    let train = true;
-    let out = model.forward(&batch, train);
+    let mut model = GPTModel::init(&model_config, root);
+    let out = model.forward_t(&batch, train);
 
     //batch.print(); //model works
     //println!("\nOutput shape: {:?}", out.size()); // shape is the same too
 
     //out.print(); - avoid calling this
 
+    //works
+    let start_context = "Hello, I am";
+    let encoded_vec: Vec<i64> = tokenizer
+            .encode_with_special_tokens(start_context)
+            .into_iter()
+            .map(|x| x as i64)
+            .collect();
+    let mut encoded_tens = Tensor::from_slice(&encoded_vec)
+            .to_kind(Kind::Int64)
+            .to_device(Device::Cpu);
+    encoded_tens.unsqueeze(0);
+    
+    //turning off training - implementing ModuleT for training and evaluation differences
+    let train = false;
+   
+    let out = generate_text_simple(model, &encoded_tens, 6, model_config.context_length, train);
+
+    //suitable answer because of different seeds
+    //out.print();
+
+
+    /* This was the conversion back into text. How annoying. Python makes this much simpler. */
+    let squeezed = out.squeeze().to_kind(Kind::Int64);
+    //Extract token IDs into a Vec<i64>
+    let token_ids: Vec<i64> = squeezed.iter::<i64>().unwrap().collect();
+    //convert to Vec<u32> for tokenizer
+    let token_ids_u32: Vec<u32> = token_ids.iter().map(|&id| id as u32).collect();
+    //Decode using tokenizer
+    let decoded_text = tokenizer.decode(token_ids_u32);
+    println!("{:?}", decoded_text);
+    
     return;
 
 }

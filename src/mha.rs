@@ -2,7 +2,7 @@ use core::{f64, num};
 
 //This is the Multi-Head Attention implementation in Rust
 use tch::{Tensor, Device, Kind, nn};
-use tch::nn::{Init, LinearConfig, Linear, linear, Module};
+use tch::nn::{linear, Init, Linear, LinearConfig, Module, ModuleT};
 use tch::nn::init::{NormalOrUniform, FanInOut, NonLinearity, DEFAULT_KAIMING_UNIFORM};
 #[derive(Debug)]
 pub struct MultiHeadAttention{
@@ -17,7 +17,7 @@ pub struct MultiHeadAttention{
     pub head_dim: i64,
     //register buff will be a fcn call that I create myself 
     pub mask: Tensor,// I guess this is how I will do the register_buffer,
-    pub train: bool
+    
 }
 
 impl MultiHeadAttention{
@@ -60,12 +60,12 @@ impl MultiHeadAttention{
             W_value,
             out_proj,
             dropout_val,
-            mask,
-            train: true //default val for train
+            mask
         }
     }
-    
-    pub fn forward(&self,x: &Tensor) -> Tensor{
+}
+impl ModuleT for MultiHeadAttention {
+    fn forward_t(&self,x: &Tensor, train: bool) -> Tensor{
         let [b, num_tokens, d_in]: [i64; 3] = x.size().try_into().unwrap();
         //println!("{:?}", x);
         //tensor shape for arrays
@@ -103,7 +103,7 @@ impl MultiHeadAttention{
         //to get last element -> *keys.size() returns Vec<i64> -> .last for vec -> .unwrap for element
         let last_element = *keys.size().last().unwrap() as f64;
         let mut attn_weights = Tensor::softmax(&(attn_scores/ last_element.powf(0.5)) , -1, (Kind::Float));
-        attn_weights = Tensor::dropout(&attn_weights, self.dropout_val, self.train);
+        attn_weights = Tensor::dropout(&attn_weights, self.dropout_val, train);
 
         let mut context_vec = (attn_weights.matmul(&values)).transpose(1, 2);
         context_vec = context_vec.contiguous().view([b, num_tokens, self.d_out]);
@@ -113,12 +113,4 @@ impl MultiHeadAttention{
         return context_vec;
     }
 
-    //for the sake of train and eval, we will do this
-    pub fn train(&mut self) {
-        self.train = true;
-    }
-
-    pub fn eval(&mut self) {
-        self.train = false;
-    }
 }
