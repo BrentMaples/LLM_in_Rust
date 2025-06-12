@@ -124,3 +124,11 @@ impl GPTModel{
 
     }
 }
+
+
+pub fn generate_text_simple(model: GPTModel, encoded: Tensor, max_new_tokens: i64, context_size: i64){
+    for _ in 0..max_new_tokens {
+        //grab the last of each (since we do this for next-word prediction)
+        let idx_cond = encoded.slice(1, encoded.size()[1] - context_size, encoded.size()[1], 1);
+    }
+}
