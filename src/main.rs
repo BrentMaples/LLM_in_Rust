@@ -172,6 +172,10 @@ fn main() {
     //Decode using tokenizer
     let decoded_text = tokenizer.decode(token_ids_u32);
     println!("{:?}", decoded_text);
+
+
+    /* Now that this is done, I must focus on pretraining the unlabeled data and training the LLM with it.
+     */
     
     return;
 
