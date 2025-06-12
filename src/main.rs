@@ -14,6 +14,7 @@ use crate::mha::MultiHeadAttention;
 
 
 fn main() {
+    tch::manual_seed(123);
     //Reading the file in and making it a txt
     let file_path = "./data/the_verdict.txt";
     let mut file = File::open(file_path).expect("File Path Invalid");
@@ -40,10 +41,10 @@ fn main() {
     //now we simulate printing - this only does one iteration for the time being before breaking
     let (input_batch, target_batch) = dataset::batch_printing(batch_size, dataset);      
     //println!("Total elements: {}", input_batch.numel());
-    input_batch.print();
-    println!("Inputs shape: {:?}", input_batch.size());
+    //input_batch.print();
+    //println!("Inputs shape: {:?}", input_batch.size());
     let embedded = token_embedding_layer.forward(&input_batch);
-    println!("Embedded shape: {:?}", embedded.size());
+    //println!("Embedded shape: {:?}", embedded.size());
     
     /*
     At this point in the code I have done the relative position approach for token embeddings. This is what I would consider the first step of the LLM journey.
@@ -62,6 +63,8 @@ fn main() {
     ])
     .reshape(&[6, 3])
     .to_kind(Kind::Float);//need reshape
+
+    
     
     
     let batch = Tensor::stack(&[&inputs, &inputs], 0);

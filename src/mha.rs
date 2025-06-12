@@ -2,7 +2,8 @@ use core::{f64, num};
 
 //This is the Multi-Head Attention implementation in Rust
 use tch::{Tensor, Device, Kind, nn};
-use tch::nn::{LinearConfig, Linear, linear, Module};
+use tch::nn::{Init, LinearConfig, Linear, linear, Module};
+use tch::nn::init::{NormalOrUniform, FanInOut, NonLinearity, DEFAULT_KAIMING_UNIFORM};
 
 pub struct MultiHeadAttention{
     pub d_out: i64,
@@ -27,8 +28,16 @@ impl MultiHeadAttention{
         let num_heads = num_heads;
         //auto floor div in rust so no need to floor
         let head_dim = d_out / num_heads;
-        //defaults for ws_init and bs_init but setting bias to qkv_bias val
-        let config = LinearConfig {bias: qkv_bias,..Default::default()};
+        //
+        let config = LinearConfig {
+            ws_init: Init::Kaiming {
+                dist: NormalOrUniform::Uniform,
+                fan: FanInOut::FanIn,
+                non_linearity: NonLinearity::ReLU,
+            },
+            bs_init: None,
+            bias: qkv_bias
+        };
         //need to look at variable stores more later on
         
         let W_query = linear(vs, d_in, d_out,config);
