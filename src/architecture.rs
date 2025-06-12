@@ -1,7 +1,9 @@
 //This is the architecture file for my LLM
 use crate::mha::MultiHeadAttention;
 use tch::nn::Sequential;
-use crate::ffn_layer::{LayerNorm, GELU, FeedForward};
+use crate::ffn_layer::{LayerNorm, FeedForward};
+use tch::nn::{Init, LinearConfig, Linear, linear, Module};
+use tch::nn::init::{NormalOrUniform, FanInOut, NonLinearity, DEFAULT_KAIMING_UNIFORM};
 
 pub struct CONFIG_124M{
    pub vocab_size: i64,

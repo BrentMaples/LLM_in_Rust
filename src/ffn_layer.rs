@@ -1,5 +1,9 @@
 //This implements Layer Normalization, Feed Forward networks, and GELU
-use tch::{nn::Path, Device, Kind, Tensor};
+use tch::{nn::{self, Module, Path, Sequential}, Device,Kind, Tensor};
+use tch::nn::{Init, LinearConfig, Linear, linear};
+use tch::nn::init::{NormalOrUniform, FanInOut, NonLinearity, DEFAULT_KAIMING_UNIFORM};
+use crate::architecture::CONFIG_124M;
+
  /*
  class LayerNorm(nn.Module):
     def __init__(self, emb_dim):
@@ -14,7 +18,7 @@ use tch::{nn::Path, Device, Kind, Tensor};
         norm_x = (x-mean) / torch.sqrt(var + self.eps)
         return self.scale * norm_x + self.shift
  */
-
+//batch_example = torch.randn(2,5)
 pub struct LayerNorm{
    pub eps: f64,
    pub scale: Tensor,
@@ -22,7 +26,7 @@ pub struct LayerNorm{
 }
 
 impl LayerNorm{
-   pub fn init(emb_dim: i64, root: &Path) -> Self{
+   pub fn init(emb_dim: i64, root: &nn::Path) -> Self{
      //parameter type storing -> docs: https://docs.rs/tch/latest/tch/nn/struct.Path.html#method.ones
      let scale = root.ones("scale", &[emb_dim]);
      let shift = root.zeros("shift", &[emb_dim]);
@@ -51,7 +55,7 @@ impl LayerNorm{
             (x + 0.044715 * torch.pow(x,3))
         ))
  */
-pub struct GELU{}
+//just pass .gelu("approximate") to do the same thing above
 /* class FeedForward(nn.Module):
     def __init__(self, cfg):
         super().__init__()
@@ -65,4 +69,33 @@ pub struct GELU{}
     def forward(self, x):
         return self.layers(x)
  */
-pub struct FeedForward{}
+pub struct FeedForward{
+   pub layers: Sequential
+}
+impl FeedForward{
+   pub fn init(&self, cfg: CONFIG_124M, root: &nn::Path) -> Self {
+      let lin_config = LinearConfig {
+            ws_init: Init::Kaiming {
+                dist: NormalOrUniform::Uniform,
+                fan: FanInOut::FanIn,
+                non_linearity: NonLinearity::ReLU,
+            },
+            bs_init: None,
+            bias: cfg.qkv_bias
+      };
+      let linear_lyr_1 = linear(root, cfg.emb_dim, 4 * cfg.emb_dim,lin_config);
+      let linear_lyr_2 = linear(root, 4*cfg.emb_dim, cfg.emb_dim, lin_config);
+      //initialized sequential layer
+      let mut layers = nn::seq();
+      layers = layers
+         .add(linear_lyr_1)
+         .add_fn(|x| x.gelu("approximate"))
+         .add(linear_lyr_2);
+      Self {
+         layers
+      }
+   }
+   pub fn forward(&self, x:Tensor) -> Tensor{
+      return self.layers.forward(&x);
+   }
+}
