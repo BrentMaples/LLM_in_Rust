@@ -19,6 +19,7 @@ use crate::architecture::CONFIG_124M;
         return self.scale * norm_x + self.shift
  */
 //batch_example = torch.randn(2,5)
+#[derive(Debug)]
 pub struct LayerNorm{
    pub eps: f64,
    pub scale: Tensor,
@@ -69,7 +70,8 @@ impl LayerNorm{
     def forward(self, x):
         return self.layers(x)
  */
-pub struct FeedForward{
+#[derive(Debug)]
+ pub struct FeedForward{
    pub layers: Sequential
 }
 impl FeedForward{

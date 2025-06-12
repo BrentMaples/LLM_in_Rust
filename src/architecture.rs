@@ -1,7 +1,11 @@
 //This is the architecture file for my LLM
 use crate::mha::MultiHeadAttention;
-use tch::{nn::{self, Sequential}, Tensor};
+use tch::{nn::{self, embedding, linear, Embedding, EmbeddingConfig, Init, Linear, SequentialT}, Device, Tensor};
 use crate::ffn_layer::{LayerNorm, FeedForward};
+use tch::nn::{LinearConfig,Module};
+use tch::nn::init::{NormalOrUniform, FanInOut, NonLinearity, DEFAULT_KAIMING_UNIFORM};
+use tch::nn::ModuleT; 
+use tch::Kind;
 
 
 pub struct CONFIG_124M{
@@ -14,36 +18,17 @@ pub struct CONFIG_124M{
    pub qkv_bias: bool
 }
 
-//now let us implement the transformer block - stop for now, need to implement the other stuff
+//now let us implement the transformer block
 
+#[derive(Debug)]
 pub struct TransformerBlock {
    pub att: MultiHeadAttention,
    pub ff: FeedForward,
    pub norm_1: LayerNorm,
    pub norm_2: LayerNorm,
    pub drop_shortcut: f64,
-   pub train: bool
+   
 }
-/*
-    def forward(self,x):
-        # shortcut connection for attention block
-        shortcut=x
-        x=self.norm1(x)
-        x=self.att(x)
-        x=self.drop_shortcut(x)
-        # then we add the original input back
-        x = x+shortcut
-        
-        # this is the shortcut connection for the feedforward block
-        shortcut = x
-        x = self.norm2(x)
-        x = self.ff(x)
-        x = self.drop_shortcut(x)
-        x = x + shortcut
-        
-        
-        return x
- */
 
 impl TransformerBlock{
     pub fn init(cfg: &CONFIG_124M, root: &nn::Path) -> Self {
@@ -54,32 +39,88 @@ impl TransformerBlock{
         let norm_2 = LayerNorm::init(cfg.emb_dim, root);
         let drop_shortcut = cfg.drop_rate;
 
-        Self { att, ff, norm_1, norm_2, drop_shortcut, train: true}
+        Self { att, ff, norm_1, norm_2, drop_shortcut}
     }
-
-    pub fn forward(&self, x: &Tensor) -> Tensor {
+}
+// train is passed here
+impl ModuleT for TransformerBlock {
+    fn forward_t(&self, x: &Tensor, train: bool) -> Tensor {
         let shortcut1 = x;
         let mut out = self.norm_1.forward(x);
         out = self.att.forward(&out);
-        out = Tensor::dropout(&out, self.drop_shortcut, self.train);
+        out = out.dropout(self.drop_shortcut, train);
         out = out + shortcut1;
 
-        //use shallow_clone to solve borrowing issue: Returns a new tensor that share storage with the input tensor.
         let shortcut2 = out.shallow_clone();
         out = self.norm_2.forward(&out);
         out = self.ff.forward(&out);
-        out = Tensor::dropout(&out, self.drop_shortcut, self.train);
-        out = out + shortcut2;
+        out = out.dropout(self.drop_shortcut, train);
+        out + shortcut2
+    }
+}
 
 
-        return out;
+pub struct GPTModel{
+    pub tok_emb: Embedding,
+    pub pos_emb: Embedding,
+    pub drop_val: f64,
+    pub trf_blocks: SequentialT,
+    pub final_norm: LayerNorm,
+    pub out_head: Linear
+}
+
+impl GPTModel{
+    pub fn init(cfg: &CONFIG_124M, root: &nn::Path) -> Self{
+        //this is this is the default, I just prefer to write it out for clarity
+        let embed_config = EmbeddingConfig{
+            sparse: false,
+            scale_grad_by_freq: false,
+            ws_init: Init::Randn { mean: 0., stdev: 1. },
+            padding_idx: -1 //equates to None in Rust 
+        };
+        
+        let tok_emb = embedding(root, cfg.vocab_size, cfg.emb_dim, embed_config);
+        let pos_emb = embedding(root, cfg.context_length, cfg.emb_dim, embed_config);
+        //do not init dropout here
+        let mut trf_blocks = nn::seq_t();
+        for _ in 0..cfg.n_layers {
+            //prevents moving of values
+            let block = TransformerBlock::init(cfg, &root);
+            trf_blocks = trf_blocks.add(block); //adding it to sequential
+        }
+
+
+        let final_norm = LayerNorm::init(cfg.emb_dim, root);
+        let lin_config = LinearConfig {
+            ws_init: Init::Kaiming {
+                dist: NormalOrUniform::Uniform,
+                fan: FanInOut::FanIn,
+                non_linearity: NonLinearity::ReLU,
+            },
+            bs_init: None,
+            bias: cfg.qkv_bias
+        };
+        let out_head = linear(root, cfg.emb_dim, cfg.vocab_size, lin_config);
+        Self { tok_emb, pos_emb , drop_val: cfg.drop_rate, trf_blocks, final_norm, out_head}
     }
 
-    pub fn train(&mut self) {
-        self.train = true;
-    }
 
-    pub fn eval(&mut self) {
-        self.train = false;
+    pub fn forward(&self, in_idx: &Tensor, train:bool) -> Tensor {
+        let [batch_size, seq_len]: [i64; 2] = in_idx.size().try_into().unwrap();
+        let tok_embeds = self.tok_emb.forward(&in_idx);
+        //allows us to train data with a CPU or GPU, depending on which device the input data sits on
+        let pos_embed_inp = Tensor::arange(seq_len, (Kind::Int64, Device::Cpu));
+        let pos_embeds = self.pos_emb.forward(&pos_embed_inp);
+
+        let mut x = tok_embeds + pos_embeds;
+        x = x.dropout(self.drop_val,train);
+        x = self.trf_blocks.forward_t(&x, train);
+        x = self.final_norm.forward(&x);
+
+        let logits = self.out_head.forward(&x);
+
+        return logits;
+
+
     }
 }

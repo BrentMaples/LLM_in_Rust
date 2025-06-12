@@ -9,10 +9,11 @@ mod dataset;
 mod mha;
 mod architecture;
 mod ffn_layer;
-use crate::architecture::{CONFIG_124M, TransformerBlock};
+use crate::architecture::{CONFIG_124M, TransformerBlock, GPTModel};
 //includes class implementations 
 use crate::dataset::GPTDataset;
 use crate::mha::MultiHeadAttention;
+use tch::nn::ModuleT;
 
 
 
@@ -35,7 +36,7 @@ fn main() {
     let drop_last = true;
     //my own dataset
     let tokenizer = r50k_base().unwrap();
-    let dataset = GPTDataset::init(contents, tokenizer, max_len, stride);
+    let dataset = GPTDataset::init(contents, tokenizer.clone(), max_len, stride);
     // For embedding reqs:
     let vs = nn::VarStore::new(Device::Cpu);
     let root = &vs.root();
@@ -101,11 +102,45 @@ fn main() {
     
     let transform_input = Tensor::randn([2,4,model_config.emb_dim], (Kind::Float, Device::Cpu));
     let block = TransformerBlock::init(&model_config, root);
-    let output = block.forward(&transform_input);
+    let output = block.forward_t(&transform_input, true);
 
     //shape is maintained, which is good
-    println!("{:?}", transform_input.size());
-    println!("{:?}", output.size());
+    // println!("{:?}", transform_input.size());
+    // println!("{:?}", output.size());
+    // this is the final GPT architecture with testing
+
+    //text data for the model - this was unecessarily difficult to do for a test case
+    let txt1 = "Every effort moves you";
+    let txt2 = "Every day holds a";
+   
+    let sentences = [txt1, txt2];
+
+    let mut batch_vec: Vec<Tensor> = Vec::new();
+
+    for &txt in &sentences {
+        let tokens: Vec<i64> = tokenizer
+            .encode_with_special_tokens(txt)
+            .into_iter()
+            .map(|x| x as i64)
+            .collect();
+
+        let tensor = Tensor::from_slice(&tokens)
+            .to_kind(Kind::Int64)
+            .to_device(Device::Cpu);
+        batch_vec.push(tensor);
+    }
+
+    let batch = Tensor::stack(&batch_vec, 0);
+    // python is much better at making instances for use
+    let model = GPTModel::init(&model_config, root);
+    let train = true;
+    let out = model.forward(&batch, train);
+
+    //batch.print(); //model works
+    //println!("\nOutput shape: {:?}", out.size()); // shape is the same too
+
+    //out.print(); - avoid calling this
+
     return;
 
 }

@@ -4,7 +4,7 @@ use core::{f64, num};
 use tch::{Tensor, Device, Kind, nn};
 use tch::nn::{Init, LinearConfig, Linear, linear, Module};
 use tch::nn::init::{NormalOrUniform, FanInOut, NonLinearity, DEFAULT_KAIMING_UNIFORM};
-
+#[derive(Debug)]
 pub struct MultiHeadAttention{
     pub d_out: i64,
     pub num_heads: i64,
