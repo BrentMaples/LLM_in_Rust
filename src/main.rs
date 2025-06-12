@@ -9,10 +9,11 @@ mod dataset;
 mod mha;
 mod architecture;
 mod ffn_layer;
-use crate::architecture::CONFIG_124M;
+use crate::architecture::{CONFIG_124M, TransformerBlock};
 //includes class implementations 
 use crate::dataset::GPTDataset;
 use crate::mha::MultiHeadAttention;
+
 
 
 
@@ -79,7 +80,7 @@ fn main() {
     let num_heads = 2;
     let mha = MultiHeadAttention::init(root,d_in, d_out, context_length, 0.0, num_heads, false);
     //mha is an instance of MHA, so do . notation 
-    let context_vecs = mha.forward(batch);
+    let context_vecs = mha.forward(&batch);
     // println!("Tensors after MHA:");
     // context_vecs.print();
     
@@ -98,8 +99,13 @@ fn main() {
         qkv_bias: false
     };
     
+    let transform_input = Tensor::randn([2,4,model_config.emb_dim], (Kind::Float, Device::Cpu));
+    let block = TransformerBlock::init(&model_config, root);
+    let output = block.forward(&transform_input);
 
-    
+    //shape is maintained, which is good
+    println!("{:?}", transform_input.size());
+    println!("{:?}", output.size());
     return;
 
 }

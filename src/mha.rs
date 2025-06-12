@@ -65,7 +65,7 @@ impl MultiHeadAttention{
         }
     }
     
-    pub fn forward(&self,x: Tensor) -> Tensor{
+    pub fn forward(&self,x: &Tensor) -> Tensor{
         let [b, num_tokens, d_in]: [i64; 3] = x.size().try_into().unwrap();
         //println!("{:?}", x);
         //tensor shape for arrays

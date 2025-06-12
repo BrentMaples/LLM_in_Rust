@@ -34,7 +34,7 @@ impl LayerNorm{
      Self { eps: 1e-5, scale, shift }
    }
 
-   pub fn forward(&self, x: Tensor) -> Tensor {
+   pub fn forward(&self, x: &Tensor) -> Tensor {
       let mean = x.mean_dim(-1,true, Kind::Float);
       let var = x.var_dim(-1,false,true);
       let norm_x = (x-&mean) / Tensor::sqrt(&(var + self.eps));
@@ -55,7 +55,7 @@ impl LayerNorm{
             (x + 0.044715 * torch.pow(x,3))
         ))
  */
-//just pass .gelu("approximate") to do the same thing above
+//just pass .gelu("tanh") to do the same thing above
 /* class FeedForward(nn.Module):
     def __init__(self, cfg):
         super().__init__()
@@ -73,7 +73,7 @@ pub struct FeedForward{
    pub layers: Sequential
 }
 impl FeedForward{
-   pub fn init(&self, cfg: CONFIG_124M, root: &nn::Path) -> Self {
+   pub fn init(cfg: &CONFIG_124M, root: &nn::Path) -> Self {
       let lin_config = LinearConfig {
             ws_init: Init::Kaiming {
                 dist: NormalOrUniform::Uniform,
@@ -89,13 +89,13 @@ impl FeedForward{
       let mut layers = nn::seq();
       layers = layers
          .add(linear_lyr_1)
-         .add_fn(|x| x.gelu("approximate"))
+         .add_fn(|x| x.gelu("tanh"))
          .add(linear_lyr_2);
       Self {
          layers
       }
    }
-   pub fn forward(&self, x:Tensor) -> Tensor{
+   pub fn forward(&self, x:&Tensor) -> Tensor{
       return self.layers.forward(&x);
    }
 }
