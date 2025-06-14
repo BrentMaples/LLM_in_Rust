@@ -197,6 +197,8 @@ fn main() {
     let output_text = token_ids_to_text(token_ids, tokenizer);
     println!("Output text:\n{}", output_text);
 
+    //./data/rust_gpt2_pretrained_weights/
+    //tbh I am failing to use the pretrained right now, should I just continue without it?
     return;
 
 }
