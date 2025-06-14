@@ -8,11 +8,13 @@ use tch::nn::{EmbeddingConfig, embedding};
 mod dataset;
 mod mha;
 mod architecture;
+mod weights;
 mod ffn_layer;
 use crate::architecture::{generate_text_simple, GPTModel, TransformerBlock, CONFIG_124M};
 //includes class implementations 
 use crate::dataset::GPTDataset;
 use crate::mha::MultiHeadAttention;
+use crate::weights::{generate, text_to_token_ids, token_ids_to_text};
 use tch::nn::ModuleT;
 use tch::CModule;
 
@@ -171,12 +173,30 @@ fn main() {
     let token_ids_u32: Vec<u32> = token_ids.iter().map(|&id| id as u32).collect();
     //Decode using tokenizer
     let decoded_text = tokenizer.decode(token_ids_u32);
-    println!("{:?}", decoded_text);
+    // println!("{:?}", decoded_text);
 
 
     /* Now that this is done, I must focus on pretraining the unlabeled data and training the LLM with it.
      */
-    
+
+    // we will initialize a new struct here with different constraints
+    let model_config_v2 = CONFIG_124M {
+        vocab_size: 50257,
+        context_length: 256,
+        emb_dim: 768,
+        n_heads: 12,
+        n_layers: 12,
+        drop_rate: 0.1,
+        qkv_bias: false
+    };
+    let model_pretrain = GPTModel::init(&model_config_v2, root);
+    //train is already turned off so we will keep the model in evaluation mode
+    let token_ids = generate(model_pretrain, text_to_token_ids("Every effort moves you", tokenizer.clone()), 
+    15, model_config_v2.context_length, 1.4, Some(25), None, train);
+
+    let output_text = token_ids_to_text(token_ids, tokenizer);
+    println!("Output text:\n{}", output_text);
+
     return;
 
 }
