@@ -1,8 +1,8 @@
 /* This creates my tokenized text for me */
 //bpe implementation
-use tch::{Tensor, Kind};
+use tch::{data, Kind, Tensor};
 //GPT2
-use tiktoken_rs::{r50k_base, CoreBPE};
+use tiktoken_rs::{r50k_base, tokenizer, CoreBPE};
 
 
 
@@ -20,7 +20,6 @@ pub struct GPTDataset{
 
 //So we have built the GPT dataset equivalent in Rust
 impl GPTDataset {
-
     //defined self for no return
     // takes the string data from the file and we can stuff it into the BPE, may not need to pass tokenizer itself here
     pub fn init (txt: String, tokenizer: CoreBPE, max_len: usize, 
@@ -62,31 +61,32 @@ impl GPTDataset {
 
     }
 
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
             self.input_ids.len()
         }
-    
-    pub fn get_item(&self, index:usize) -> (&Tensor, &Tensor){
-        //must be a tuple for returning
-        return (&self.input_ids[index], &self.target_ids[index]);
+
+//requires sample return
+   
+
+    fn get_sample(&self, index: usize) -> (Tensor, Tensor) {
+        (
+            self.input_ids[index].shallow_clone(),
+            self.target_ids[index].shallow_clone(),
+        )
     }
 }
-//this is equivalent to dataloader for one batch (iter)
-pub fn batch_printing(batch_size: usize, dataset: GPTDataset) -> (Tensor, Tensor){
-    let mut input_batch: Tensor = Tensor::new();
-    let mut target_batch: Tensor = Tensor::new();
-    for batch_start in (0..dataset.len()).step_by(batch_size) {
-        let batch_end = (batch_start + batch_size).min(dataset.len());
-        let inputs: Vec<_> = (batch_start..batch_end)
-            .map(|i| dataset.input_ids[i].shallow_clone())
-            .collect();
-        let targets: Vec<_> = (batch_start..batch_end)
-            .map(|i| dataset.target_ids[i].shallow_clone())
-            .collect();
 
-        input_batch = Tensor::stack(&inputs, 0);
-        target_batch = Tensor::stack(&targets, 0);
-        break; // only one batch for demonstration
-    }   
-    return (input_batch, target_batch);
+
+//so here I need to implement the create_dataloader_v1 fn
+pub fn create_dataloader_v1(txt: String, batch_size: usize, max_len: usize, stride: usize, shuffle: bool, drop_last: bool, tokenizer: CoreBPE){
+    let dataset = GPTDataset::init(txt, tokenizer, max_len, stride);
+    // let mut dataloader = DataLoader::builder(dataset).batch_size(batch_size);
+    // if shuffle { dataloader = dataloader.shuffle()}
+    // if drop_last {dataloader = dataloader.drop_last()}
+
+
 }
+/*
+
+ return dataloader
+*/ 

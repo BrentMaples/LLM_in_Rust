@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+ai-dataloader = "0.6.2"
 tch = "0.20.0"
 tiktoken-rs = "0.7.0"

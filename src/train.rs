@@ -4,8 +4,7 @@ use std::cmp::min;
 // ─── External Crates ───────────────────────────────────────────────────────────
 use tiktoken_rs::{CoreBPE, tokenizer};
 use tch::{
-    data, no_grad, COptimizer, Device, IndexOp, Kind, Tensor,
-    nn::{self, AdamW, EmbeddingConfig, Module, ModuleT, embedding}
+    data, nn::{self, embedding, AdamW, EmbeddingConfig, Module, ModuleT, Optimizer}, no_grad, Device, IndexOp, Kind, Tensor
 };
 
 // ─── Internal Project Modules ──────────────────────────────────────────────────
@@ -30,7 +29,7 @@ pub fn generate_and_print_sample(model: &GPTModel, tokenizer: CoreBPE, start_con
 
 //Below is the actual training function for the model
 pub fn train_model_simple(model: GPTModel, train_loader: &(Tensor,Tensor), val_loader: &(Tensor,Tensor), 
-                           optimizer: COptimizer, device: Device, num_epochs: i64, 
+                           mut optimizer: Optimizer, device: Device, num_epochs: i64, 
                           eval_freq: i64, eval_iter: i64, start_context: &'static str, 
                           tokenizer: CoreBPE, train: bool, batch_size: usize) -> (Vec<f64>, Vec<f64>, Vec<i64>) { //train should be true here
       let mut train_losses: Vec<f64> = Vec::new();
