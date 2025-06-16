@@ -1,9 +1,16 @@
+//MHA implementation in Rust
+// ─── Standard/Core Library ─────────────────────────────────────────────────────
 use core::{f64, num};
 
-//This is the Multi-Head Attention implementation in Rust
-use tch::{Tensor, Device, Kind, nn};
-use tch::nn::{linear, Init, Linear, LinearConfig, Module, ModuleT};
-use tch::nn::init::{NormalOrUniform, FanInOut, NonLinearity, DEFAULT_KAIMING_UNIFORM};
+// ─── External Crate: tch ───────────────────────────────────────────────────────
+use tch::{
+    Device, Kind, Tensor,
+    nn::{
+        self, Init, Linear, LinearConfig, Module, ModuleT, linear,
+        init::{DEFAULT_KAIMING_UNIFORM, FanInOut, NonLinearity, NormalOrUniform}
+    }
+};
+
 #[derive(Debug)]
 pub struct MultiHeadAttention{
     pub d_out: i64,

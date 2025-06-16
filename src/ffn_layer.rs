@@ -1,8 +1,16 @@
-//This implements Layer Normalization, Feed Forward networks, and GELU
-use tch::{nn::{self, Module, Path, Sequential}, Device,Kind, Tensor};
-use tch::nn::{Init, LinearConfig, Linear, linear};
-use tch::nn::init::{NormalOrUniform, FanInOut, NonLinearity, DEFAULT_KAIMING_UNIFORM};
+//This implements Layer Normalization and Feed Forward networks
+// External crate: tch
+use tch::{
+    Device, Kind, Tensor,
+    nn::{
+        self, Init, Linear, LinearConfig, Module, Path, Sequential, linear,
+        init::{DEFAULT_KAIMING_UNIFORM, FanInOut, NonLinearity, NormalOrUniform}
+    }
+};
+
+// Internal module
 use crate::architecture::CONFIG_124M;
+
 
 #[derive(Debug)]
 pub struct LayerNorm{

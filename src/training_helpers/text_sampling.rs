@@ -1,15 +1,17 @@
-use tch::nn::ModuleT;
-use tch::no_grad;
-use tch::IndexOp;
-//I lack the necessary resources to train a sufficient LLM, so we will use the GPT2 pretrained weights
-use tiktoken_rs::tokenizer;
-use tiktoken_rs::CoreBPE;
-use tch::{Tensor, nn::Module, nn, Device, Kind};
-use tch::nn::{EmbeddingConfig, embedding};
-
-use crate::architecture::GPTModel;
-
 //These are functions to convert the token ids to text and likewise 
+
+use std::cmp::min;
+
+use tiktoken_rs::{CoreBPE, tokenizer};
+use tch::{
+    data, no_grad, Device, IndexOp, Kind, Tensor,
+    nn::{self, AdamW, EmbeddingConfig, Module, ModuleT}
+};
+// Internal modules
+use crate::architecture::GPTModel;
+use crate::training_helpers::{fine_tuned::*, loss::*};
+
+//convert given string to token id 
 pub fn text_to_token_ids(txt: &'static str, tokenizer: CoreBPE ) -> Tensor {
    let tokens_ids: Vec<i64> = tokenizer
             .encode_with_special_tokens(&txt)
@@ -24,6 +26,7 @@ pub fn text_to_token_ids(txt: &'static str, tokenizer: CoreBPE ) -> Tensor {
    return encoded_tensor;
 }
 
+//reconvert token id to text
 pub fn token_ids_to_text(token_ids: Tensor, tokenizer: CoreBPE) -> String {
    let flat = token_ids.squeeze();
    //so I need to iterate through the vec and then unwrap and map it to usize before collecting it
@@ -33,9 +36,8 @@ pub fn token_ids_to_text(token_ids: Tensor, tokenizer: CoreBPE) -> String {
    return decoded_tensor;
 }
 
-
-//Now we need to implement the generate -> must unwrap optional values
-pub fn generate(model: GPTModel, mut idx: Tensor, max_new_tokens: i64,
+//Generating text for multi-token prediction using top-k and temperature. May add top-p in the future!
+pub fn generate(model: &GPTModel, mut idx: Tensor, max_new_tokens: i64,
                context_size: i64, temperature: f64, top_k: Option<i64>,
                eos_id: Option<i64>, train: bool) -> Tensor {
       for _ in 0..max_new_tokens{
@@ -86,10 +88,3 @@ pub fn generate(model: GPTModel, mut idx: Tensor, max_new_tokens: i64,
 
       return idx;
 }
-
-
-
-pub fn assign(left: Tensor, right: Tensor, root: &nn::Path, train: bool, name:&str) -> Tensor{
-      let curr_tens = root.add(&name,right,train);
-      return curr_tens;
-} 

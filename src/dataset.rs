@@ -1,8 +1,8 @@
 //bpe implementation
 use tch::{Tensor, Kind};
 //GPT2
-use tiktoken_rs::r50k_base;
-use tiktoken_rs::CoreBPE;
+use tiktoken_rs::{r50k_base, CoreBPE};
+
 
 
 //at the moment, implementing GPTDataset from my notes -- equiv to pytorch dataset in rust
@@ -70,7 +70,7 @@ impl GPTDataset {
         return (&self.input_ids[index], &self.target_ids[index]);
     }
 }
-
+//this is equivalent to dataloader
 pub fn batch_printing(batch_size: usize, dataset: GPTDataset) -> (Tensor, Tensor){
     let mut input_batch: Tensor = Tensor::new();
     let mut target_batch: Tensor = Tensor::new();

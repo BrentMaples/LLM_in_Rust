@@ -1,11 +1,16 @@
 //This is the architecture file for my LLM
+// External crates - tch
+use tch::{
+    no_grad, Device, Kind, Tensor,
+    nn::{
+        self, embedding, init::{DEFAULT_KAIMING_UNIFORM, FanInOut, NonLinearity, NormalOrUniform},
+        Embedding, EmbeddingConfig, Init, Linear, LinearConfig, Module, ModuleT, SequentialT, linear
+    }
+};
+// Internal modules
+use crate::ffn_layer::{FeedForward, LayerNorm};
 use crate::mha::MultiHeadAttention;
-use tch::{nn::{self, embedding, linear, Embedding, EmbeddingConfig, Init, Linear, SequentialT}, no_grad, Device, Tensor};
-use crate::ffn_layer::{LayerNorm, FeedForward};
-use tch::nn::{LinearConfig,Module};
-use tch::nn::init::{NormalOrUniform, FanInOut, NonLinearity, DEFAULT_KAIMING_UNIFORM};
-use tch::nn::ModuleT; 
-use tch::Kind;
+
 
 
 
@@ -101,6 +106,9 @@ impl GPTModel{
             bs_init: None,
             bias: cfg.qkv_bias
         };
+        /* IMPORTANT. If we wanted to fix this to a classification task such as a binary 0 and 1 (spam and not spam),
+            we would change the output layer shown by cfg.vocab_size to be 2. This is relevant to classification fine-tuning
+        */
         let out_head = linear(root, cfg.emb_dim, cfg.vocab_size, lin_config);
         Self { tok_emb, pos_emb , drop_val: cfg.drop_rate, trf_blocks, final_norm, out_head}
     }

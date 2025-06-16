@@ -1,22 +1,29 @@
 #![allow(warnings)]
+// ─── Standard Library ──────────────────────────────────────────────────────────
 use std::fs::File;
 use std::io::prelude::*;
+
+// ─── External Crates ───────────────────────────────────────────────────────────
 use tiktoken_rs::r50k_base;
-use tch::{Tensor, nn::Module, nn, Device, Kind};
-use tch::nn::{EmbeddingConfig, embedding};
-//includes dataset.rs fcns
-mod dataset;
-mod mha;
-mod architecture;
-mod weights;
-mod ffn_layer;
+use tch::{
+    CModule, Device, Kind, Tensor,
+    nn::{self, EmbeddingConfig, Module, ModuleT, embedding}
+};
+
+// ─── Internal Crate Modules ────────────────────────────────────────────────────
 use crate::architecture::{generate_text_simple, GPTModel, TransformerBlock, CONFIG_124M};
-//includes class implementations 
 use crate::dataset::GPTDataset;
 use crate::mha::MultiHeadAttention;
-use crate::weights::{generate, text_to_token_ids, token_ids_to_text};
-use tch::nn::ModuleT;
-use tch::CModule;
+use crate::training_helpers::{fine_tuned::*, loss::*, text_sampling::*};
+
+// ─── Project Module Declarations ───────────────────────────────────────────────
+mod architecture;
+mod dataset;
+mod ffn_layer;
+mod mha;
+mod train;
+mod training_helpers;
+
 
 
 
@@ -50,6 +57,7 @@ fn main() {
     let token_embedding_layer = nn::embedding(root, vocab_size, output_dim, default_config);
 
     //now we simulate printing - this only does one iteration for the time being before breaking
+    //this call is similar to calling the dataloader
     let (input_batch, target_batch) = dataset::batch_printing(batch_size, dataset);      
     //println!("Total elements: {}", input_batch.numel());
     //input_batch.print();
@@ -191,14 +199,39 @@ fn main() {
     };
     let model_pretrain = GPTModel::init(&model_config_v2, root);
     //train is already turned off so we will keep the model in evaluation mode
-    let token_ids = generate(model_pretrain, text_to_token_ids("Every effort moves you", tokenizer.clone()), 
+    let token_ids = generate(&model_pretrain, text_to_token_ids("Every effort moves you", tokenizer.clone()), 
     15, model_config_v2.context_length, 1.4, Some(25), None, train);
 
     let output_text = token_ids_to_text(token_ids, tokenizer);
     println!("Output text:\n{}", output_text);
+    //once we have arrived here, we can consider this model "done" in the sense that it now needs to be trained.
+    //so now we can begin training the model in such a way as shown below
+
+    /*
+    torch.save(model.state_dict(), "model.pth")
+    model = GPTModel(GPT_CONFIG_124M)
+    model.load_state_dict(torch.load("model.pth", map_location=device))
+    model.eval()
+    torch.save({
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        },
+        "model_and_optimizer.pth"
+    )
+        checkpoint = torch.load("model_and_optimizer.pth", map_location=device)
+    model = GPTModel(GPT_CONFIG_124M)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4, weight_decay=0.1)
+    optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    model.train();
+
+     */
 
     //./data/rust_gpt2_pretrained_weights/
     //tbh I am failing to use the pretrained right now, should I just continue without it?
+    /*
+    As of now my pretrained weights failed to load in. I will build my own way of making a better model later and see what I can do.
+     */
     return;
 
 }
