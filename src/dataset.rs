@@ -1,3 +1,4 @@
+/* This creates my tokenized text for me */
 //bpe implementation
 use tch::{Tensor, Kind};
 //GPT2
@@ -70,7 +71,7 @@ impl GPTDataset {
         return (&self.input_ids[index], &self.target_ids[index]);
     }
 }
-//this is equivalent to dataloader
+//this is equivalent to dataloader for one batch (iter)
 pub fn batch_printing(batch_size: usize, dataset: GPTDataset) -> (Tensor, Tensor){
     let mut input_batch: Tensor = Tensor::new();
     let mut target_batch: Tensor = Tensor::new();
