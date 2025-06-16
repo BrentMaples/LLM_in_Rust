@@ -9,13 +9,17 @@ Additionally, I used BPE encoding taken from the GPT-2 model: https://github.com
 1. ## main.rs
    1. File containing each of the model calls and my tests.
 1. ## dataset.rs
-   1. This represents the token embedding step of the LLM with a relative positional embeddings implementation. We receive token IDs from this code.
+   1. This represents the token embedding step of the LLM with a relative positional embeddings implementation. We receive our token IDs from this code.
 1. ## mha.rs
    1. This file implements an efficient Multi Head Attention mechanism with parallelism and multiple Causal Attention heads.
 1. ## ffn_layer.rs
    1. Implementations for this codes Feed Forward and Layer Normalization to be used in architecture.rs
 1. ## architecture.rs
    1. The LLM backbone with model configuration, the transformer, and the model itself.
+1. ## train.rs
+   1. The training implementation for the model
+   1. ### training_helpers
+      1. These are all the files I used in the train.rs code to create and train my model.
 
 
 
