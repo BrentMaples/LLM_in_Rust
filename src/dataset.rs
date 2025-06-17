@@ -7,6 +7,29 @@ use tiktoken_rs::{r50k_base, tokenizer, CoreBPE};
 use crate::dataloader::DataLoader;
 
 
+/* to make my code dynamic for both datasets */
+pub trait Dataset: DatasetClone {
+    fn get_sample(&self, index: usize) -> (Tensor, Tensor);
+    fn indices(&self) -> Vec<usize>;
+    fn len(&self) -> usize;
+}
+
+pub trait DatasetClone {
+    fn clone_box(&self) -> Box<dyn Dataset>;
+}
+impl<T> DatasetClone for T
+where
+    T: Dataset + Clone + 'static,
+{
+    fn clone_box(&self) -> Box<dyn Dataset> {
+        Box::new(self.clone())
+    }
+}
+impl Clone for Box<dyn Dataset> {
+    fn clone(&self) -> Box<dyn Dataset> {
+        self.clone_box()
+    }
+}
 
 //at the moment, implementing GPTDataset from my notes -- equiv to pytorch dataset in rust
 
@@ -64,22 +87,19 @@ impl GPTDataset {
 
     }
 
-    pub fn len(&self) -> usize {
-            self.input_ids.len()
-        }
-
-    pub fn get_sample(&self, index: usize) -> (Tensor, Tensor) {
-        (
-            self.input_ids[index].shallow_clone(),
-            self.target_ids[index].shallow_clone(),
-        )
+}
+impl Dataset for GPTDataset {
+    fn get_sample(&self, index: usize) -> (Tensor, Tensor) {
+        self.get_sample(index)
     }
 
-    //added for dataloader
-    pub fn indices(&self) -> Vec<usize> {
-        (0..self.len()).collect()
+    fn indices(&self) -> Vec<usize> {
+        self.indices()
     }
 
+    fn len(&self) -> usize {
+        self.len()
+    }
 }
 //had to implement the copy trait
 impl Clone for GPTDataset {
@@ -95,7 +115,9 @@ impl Clone for GPTDataset {
 }
 
 //so here I need to implement the create_dataloader_v1 fn
-pub fn create_dataloader_v1(txt: String, batch_size: usize, max_len: usize, stride: usize, shuffle: bool, drop_last: bool, tokenizer: CoreBPE) -> DataLoader{
+pub fn create_dataloader_v1(txt: String, batch_size: usize, max_len: usize, stride: usize, shuffle: bool, drop_last: bool, tokenizer: CoreBPE,
+                            collate_fn: Box<dyn Fn(&[(Tensor, Tensor)]) -> (Tensor, Tensor)>,) -> DataLoader{
     let dataset = GPTDataset::init(txt, tokenizer, max_len, stride);
-    return DataLoader::init(dataset, batch_size, shuffle, drop_last);
+    let loader = DataLoader::init(Box::new(dataset), batch_size, true, true);
+    return loader
 }

@@ -1,8 +1,8 @@
 # LLM in Rust
 I have been a longtime programmer of Python and find myself implementing many of my machine learning tasks in this language. Recently, I have found that Rust is a great companion to Python and may help improve my implementation and understanding of PyTorch and machine learning techiniques. The objective of this repository is to record what I have implemented in my LLM journey.
 
-# How is My Model Performing?
-Could be better. It's not performing how it should right now.
+# What Have I Learned?
+It's much harder than I originally thought to make an LLM in Rust. Python overly simplifies the techniques used to create a powerful model and provides far too much abstraction when implementing its methods. After doing this project in Rust, I have learned a lot more about the inner workings of the Pytorch library. I created my own dataloader, learned about collating, tokenization, and all the other messy processes that go into making LLMs. From an LLM perspective, this model was a failure. From a learning perspective, this project was a complete success.
 
 # Libraries
 Although there are many Rust libraries that can be used, I chose to use the rust bindings for the C++ API of PyTorch: https://github.com/LaurentMazare/tch-rs.

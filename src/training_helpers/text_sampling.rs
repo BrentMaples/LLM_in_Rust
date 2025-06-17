@@ -1,7 +1,6 @@
 //These are functions to convert the token ids to text and likewise 
 
 use std::cmp::min;
-
 use tiktoken_rs::{CoreBPE, tokenizer};
 use tch::{
     data, no_grad, Device, IndexOp, Kind, Tensor,
@@ -88,3 +87,5 @@ pub fn generate(model: &GPTModel, mut idx: Tensor, max_new_tokens: i64,
 
       return idx;
 }
+
+

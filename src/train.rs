@@ -28,7 +28,7 @@ pub fn generate_and_print_sample(model: &GPTModel, tokenizer: CoreBPE, start_con
 
 
 //Below is the actual training function for the model
-pub fn train_model_simple(model: GPTModel, train_loader: DataLoader, val_loader: DataLoader, 
+pub fn train_model_simple(model: GPTModel, train_loader: DataLoader, val_loader: DataLoader, collate_fn: Box<dyn Fn(&[(Tensor, Tensor)]) -> (Tensor, Tensor)>,
                            mut optimizer: Optimizer, device: Device, num_epochs: i64, 
                           eval_freq: i64, eval_iter: i64, start_context: &'static str, 
                           tokenizer: CoreBPE, train: bool, batch_size: usize) -> (Vec<f64>, Vec<f64>, Vec<i64>) { //train should be true here
