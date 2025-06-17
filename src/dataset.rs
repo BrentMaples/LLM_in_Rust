@@ -4,9 +4,12 @@ use tch::{data, Kind, Tensor};
 //GPT2
 use tiktoken_rs::{r50k_base, tokenizer, CoreBPE};
 
+use crate::dataloader::DataLoader;
+
 
 
 //at the moment, implementing GPTDataset from my notes -- equiv to pytorch dataset in rust
+
 pub struct GPTDataset{
     pub input_ids: Vec<Tensor>,
     pub target_ids: Vec<Tensor>,
@@ -61,32 +64,38 @@ impl GPTDataset {
 
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
             self.input_ids.len()
         }
 
-//requires sample return
-   
-
-    fn get_sample(&self, index: usize) -> (Tensor, Tensor) {
+    pub fn get_sample(&self, index: usize) -> (Tensor, Tensor) {
         (
             self.input_ids[index].shallow_clone(),
             self.target_ids[index].shallow_clone(),
         )
     }
-}
 
+    //added for dataloader
+    pub fn indices(&self) -> Vec<usize> {
+        (0..self.len()).collect()
+    }
+
+}
+//had to implement the copy trait
+impl Clone for GPTDataset {
+    fn clone(&self) -> Self {
+        GPTDataset {
+            input_ids: self.input_ids.iter().map(|t| t.shallow_clone()).collect(),
+            target_ids: self.target_ids.iter().map(|t| t.shallow_clone()).collect(),
+            txt: self.txt.clone(),
+            max_len: self.max_len,
+            stride: self.stride,
+        }
+    }
+}
 
 //so here I need to implement the create_dataloader_v1 fn
-pub fn create_dataloader_v1(txt: String, batch_size: usize, max_len: usize, stride: usize, shuffle: bool, drop_last: bool, tokenizer: CoreBPE){
+pub fn create_dataloader_v1(txt: String, batch_size: usize, max_len: usize, stride: usize, shuffle: bool, drop_last: bool, tokenizer: CoreBPE) -> DataLoader{
     let dataset = GPTDataset::init(txt, tokenizer, max_len, stride);
-    // let mut dataloader = DataLoader::builder(dataset).batch_size(batch_size);
-    // if shuffle { dataloader = dataloader.shuffle()}
-    // if drop_last {dataloader = dataloader.drop_last()}
-
-
+    return DataLoader::init(dataset, batch_size, shuffle, drop_last);
 }
-/*
-
- return dataloader
-*/ 

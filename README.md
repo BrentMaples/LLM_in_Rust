@@ -20,6 +20,8 @@ Additionally, I used BPE encoding taken from the GPT-2 model: https://github.com
    1. The training implementation for the model
    1. ### training_helpers
       1. These are all the files I used in the train.rs code to create and train my model.
+1. ## dataloader.rs
+   1. Since tch-rs does not have an official Dataloader implementation in Rust, I created my own. This doesn't match the full functionality of its Python counterpart, but rather does what I need it to do for the given. There is no sampler or batch sampling, and CUDA was ignored as I am just using CPU for this project.
 
 
 

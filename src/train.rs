@@ -8,7 +8,7 @@ use tch::{
 };
 
 // ─── Internal Project Modules ──────────────────────────────────────────────────
-use crate::training_helpers::{fine_tuned::*, loss::*, text_sampling::*};
+use crate::{dataloader::DataLoader, training_helpers::{fine_tuned::*, loss::*, text_sampling::*}};
 use crate::architecture::GPTModel;
 
 
@@ -28,7 +28,7 @@ pub fn generate_and_print_sample(model: &GPTModel, tokenizer: CoreBPE, start_con
 
 
 //Below is the actual training function for the model
-pub fn train_model_simple(model: GPTModel, train_loader: &(Tensor,Tensor), val_loader: &(Tensor,Tensor), 
+pub fn train_model_simple(model: GPTModel, train_loader: DataLoader, val_loader: DataLoader, 
                            mut optimizer: Optimizer, device: Device, num_epochs: i64, 
                           eval_freq: i64, eval_iter: i64, start_context: &'static str, 
                           tokenizer: CoreBPE, train: bool, batch_size: usize) -> (Vec<f64>, Vec<f64>, Vec<i64>) { //train should be true here
@@ -38,34 +38,26 @@ pub fn train_model_simple(model: GPTModel, train_loader: &(Tensor,Tensor), val_l
       let mut tokens_seen = 0;
       let mut global_step = -1;
 
+      for epoch in 0..num_epochs {
+         let mut train_iter = DataLoader::init(train_loader.dataset.clone(), batch_size, train_loader.shuffle, train_loader.drop_last);
 
-      let (input_tensor, target_tensor) = train_loader;
-      let num_samples = input_tensor.size()[0];
-      let num_samples = input_tensor.size()[0];
+         for (input_batch, target_batch) in train_iter.by_ref() {
+            let input_batch = input_batch.to(device);
+            let target_batch = target_batch.to(device);
+            // Train step
+            optimizer.zero_grad();
+            let loss = calc_loss_batch(&input_batch, &target_batch, &model, train);
+            loss.backward();
+            optimizer.step();
 
-      for epoch in 0..num_epochs{
+            tokens_seen += input_batch.numel();
+            global_step += 1;
 
-            for i in (0..num_samples).step_by(batch_size) {
-               //manual implementation of tensor looping.
-               let end = (i + batch_size as i64).min(num_samples);
-               let input_batch = input_tensor.narrow(0, i, end - i).to(device);
-               let target_batch = target_tensor.narrow(0, i, end - i).to(device);
-               // Do training
-               optimizer.zero_grad();
-               //loss function
-               let loss = calc_loss_batch(&input_batch,&target_batch, &model, train);
-               loss.backward();
-               optimizer.step();
-
-               tokens_seen += input_batch.numel();
-               global_step += 1;
-
-               if global_step % eval_freq == 0 {
-                  let (train_loss, val_loss) = evaluate_model(&model, train_loader, val_loader, eval_iter);
+            if global_step % eval_freq == 0 {
+                  let (train_loss, val_loss) = evaluate_model(&model, &train_loader, &val_loader, eval_iter);
                   train_losses.push(train_loss);
                   val_losses.push(val_loss);
                   track_tokens_seen.push(tokens_seen as i64);
-                  //mimicked print from python
                   println!(
                      "Ep {} (Step {:06}): Train loss {:.3}, Val loss {:.3}",
                      epoch + 1,
@@ -73,9 +65,11 @@ pub fn train_model_simple(model: GPTModel, train_loader: &(Tensor,Tensor), val_l
                      train_loss,
                      val_loss
                   );
-               }
+            }
          }
+
          generate_and_print_sample(&model, tokenizer.clone(), start_context);
       }
+
       return (train_losses, val_losses, track_tokens_seen)
 }
