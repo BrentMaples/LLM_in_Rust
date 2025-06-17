@@ -43,7 +43,7 @@ fn main() {
 
     // Perform 90/10 split on raw string
     let total_len = contents.len();
-    let split_index = (total_len as f32 * 0.9).floor() as usize;
+    let split_index = (total_len as f32 * 0.8).floor() as usize;
 
     let train_txt = contents[..split_index].to_string();
     let valid_txt = contents[split_index..].to_string();

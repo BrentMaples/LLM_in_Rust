@@ -1,5 +1,8 @@
 # LLM in Rust
-I have been a longtime programmer of Python and find myself implementing many of my machine learning tasks in this language. Recently, I have found that Rust is a great companion to Python and may help improve my performance and understanding of PyTorch and machine learning techiniques. The objective of this repository is to record what I have implemented in my LLM journey.
+I have been a longtime programmer of Python and find myself implementing many of my machine learning tasks in this language. Recently, I have found that Rust is a great companion to Python and may help improve my implementation and understanding of PyTorch and machine learning techiniques. The objective of this repository is to record what I have implemented in my LLM journey.
+
+# How is My Model Performing?
+Could be better. It's not performing how it should right now.
 
 # Libraries
 Although there are many Rust libraries that can be used, I chose to use the rust bindings for the C++ API of PyTorch: https://github.com/LaurentMazare/tch-rs.

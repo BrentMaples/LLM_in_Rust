@@ -20,7 +20,7 @@ pub fn generate_and_print_sample(model: &GPTModel, tokenizer: CoreBPE, start_con
    let context_size = model.pos_emb.ws.size()[0];
    let encoded = text_to_token_ids(start_context, tokenizer.clone()).to_device(Device::Cpu);
    //temp of 1 for just in-case
-   let token_ids = no_grad(|| generate(model, encoded, 50, context_size, 1.0, Some(3), None, train));
+   let token_ids = no_grad(|| generate(model, encoded, 50, context_size, 0.5, Some(3), None, train));
    let decoded_text = token_ids_to_text(token_ids, tokenizer);
    println!("{}", decoded_text.replace("\n", " "));
 
