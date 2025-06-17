@@ -14,13 +14,13 @@ use crate::architecture::GPTModel;
 
 
 //printing for project
-pub fn generate_and_print_sample(model: &GPTModel, tokenizer: CoreBPE, start_context: &'static str){
+pub fn generate_and_print_sample(model: &GPTModel, tokenizer: CoreBPE, start_context: &str){
    let mut train = false;
    //grabbing first [0] so we get an i64, not a Vec<i64> -- ws represents weights
    let context_size = model.pos_emb.ws.size()[0];
    let encoded = text_to_token_ids(start_context, tokenizer.clone()).to_device(Device::Cpu);
    //temp of 1 for just in-case
-   let token_ids = no_grad(|| generate(model, encoded, 50, context_size, 0.5, Some(3), None, train));
+   let token_ids = no_grad(|| generate(model, encoded, 50, context_size, 1.0, Some(3), None, train));
    let decoded_text = token_ids_to_text(token_ids, tokenizer);
    println!("{}", decoded_text.replace("\n", " "));
 
@@ -28,9 +28,9 @@ pub fn generate_and_print_sample(model: &GPTModel, tokenizer: CoreBPE, start_con
 
 
 //Below is the actual training function for the model
-pub fn train_model_simple(model: GPTModel, train_loader: DataLoader, val_loader: DataLoader, collate_fn: Box<dyn Fn(&[(Tensor, Tensor)]) -> (Tensor, Tensor)>,
+pub fn train_model_simple(model: GPTModel, train_loader: DataLoader, val_loader: DataLoader,
                            mut optimizer: Optimizer, device: Device, num_epochs: i64, 
-                          eval_freq: i64, eval_iter: i64, start_context: &'static str, 
+                          eval_freq: i64, eval_iter: i64, start_context: String, 
                           tokenizer: CoreBPE, train: bool, batch_size: usize) -> (Vec<f64>, Vec<f64>, Vec<i64>) { //train should be true here
       let mut train_losses: Vec<f64> = Vec::new();
       let mut val_losses: Vec<f64> = Vec::new();
@@ -68,7 +68,7 @@ pub fn train_model_simple(model: GPTModel, train_loader: DataLoader, val_loader:
             }
          }
 
-         generate_and_print_sample(&model, tokenizer.clone(), start_context);
+         generate_and_print_sample(&model, tokenizer.clone(), &start_context);
       }
 
       return (train_losses, val_losses, track_tokens_seen)

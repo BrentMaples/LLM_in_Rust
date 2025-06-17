@@ -71,10 +71,8 @@ fn main() {
     //all are default parameters except for weight decay (wd) being 0.1
     let adamw_config = nn::AdamW { wd: 0.1, beta1: 0.9, beta2: 0.999, eps: 1e-8, amsgrad: false};
     //must declare AdamW this way, as .build requires self. vs is equivalent to model.parameters() in python
-    let mut optimizer = adamw_config.build(&vs, 0.0004).unwrap();
-    
-    let num_epochs = 10;
-    let batch_size = 2;
+    let mut optimizer = adamw_config.build(&vs, 0.0005).unwrap();
+
 
 
     //that was annoying but at least the data loader is implemented now. 
@@ -108,18 +106,21 @@ fn main() {
 
     // DataLoader creation
     let train_loader = DataLoader::init(Box::new(train_dataset), batch_size, true, true);  // shuffle, drop_last
-    let val_loader = DataLoader::init(Box::new(validation_dataset), batch_size, false, false);   // no shuffle, no drop
+    let val_loader = DataLoader::init(Box::new(validation_dataset.clone()), batch_size, false, false);   // no shuffle, no drop
     let test_loader = DataLoader::init(Box::new(test_dataset), batch_size, false, false); // no shuffle, no drop
 
-
+    let example_prompt = format_input(&validation_dataset.data[0]);
     // for entry in &entries {
     //     let prompt = format_input(entry);
     //     println!("\n---\nPROMPT:\n{}\n\nEXPECTED:\n{}\n", prompt, entry.output);
     // }
-    println!("Train loader:");
-    for (inputs, targets) in train_loader {
-        println!("inputs: {:?}, targets: {:?}", inputs.size(), targets.size());
-    }
+    // println!("Train loader:");
+    // for (inputs, targets) in train_loader {
+    //     println!("inputs: {:?}, targets: {:?}", inputs.size(), targets.size());
+    // }
+
+    let (train_losses, val_losses, tokens_seen) = train_model_simple(model, train_loader, val_loader, optimizer, Device::Cpu, 
+        2, 5, 5, example_prompt, tokenizer.clone(), train, batch_size);
 
 
     return;

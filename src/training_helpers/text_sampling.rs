@@ -11,7 +11,7 @@ use crate::architecture::GPTModel;
 use crate::training_helpers::{fine_tuned::*, loss::*};
 
 //convert given string to token id 
-pub fn text_to_token_ids(txt: &'static str, tokenizer: CoreBPE ) -> Tensor {
+pub fn text_to_token_ids(txt: &str, tokenizer: CoreBPE ) -> Tensor {
    let tokens_ids: Vec<i64> = tokenizer
             .encode_with_special_tokens(&txt)
             .into_iter()

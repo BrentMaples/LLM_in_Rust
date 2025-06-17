@@ -108,8 +108,11 @@ impl ModuleT for MultiHeadAttention {
         attn_scores.masked_fill_(&mask_bool, f64::NEG_INFINITY);
         
         //to get last element -> *keys.size() returns Vec<i64> -> .last for vec -> .unwrap for element
-        let last_element = *keys.size().last().unwrap() as f64;
-        let mut attn_weights = Tensor::softmax(&(attn_scores/ last_element.powf(0.5)) , -1, (Kind::Float));
+        // let last_element = *keys.size().last().unwrap() as f64;
+        // let mut attn_weights = Tensor::softmax(&(attn_scores/ last_element.powf(0.5)) , -1, (Kind::Float));
+        let scale = (self.head_dim as f64).powf(0.5);
+        let mut attn_weights = Tensor::softmax(&(attn_scores / scale), -1, (Kind::Float));
+
         attn_weights = Tensor::dropout(&attn_weights, self.dropout_val, train);
 
         let mut context_vec = (attn_weights.matmul(&values)).transpose(1, 2);
