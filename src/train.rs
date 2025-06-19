@@ -28,7 +28,7 @@ pub fn generate_and_print_sample(model: &GPTModel, tokenizer: CoreBPE, start_con
 
 
 //Below is the actual training function for the model
-pub fn train_model_simple(model: GPTModel, train_loader: DataLoader, val_loader: DataLoader,
+pub fn train_model_simple(model: &mut GPTModel, train_loader: DataLoader, val_loader: DataLoader,
                            mut optimizer: Optimizer, device: Device, num_epochs: i64, 
                           eval_freq: i64, eval_iter: i64, start_context: String, 
                           tokenizer: CoreBPE, train: bool, batch_size: usize) -> (Vec<f64>, Vec<f64>, Vec<i64>) { //train should be true here
@@ -53,6 +53,8 @@ pub fn train_model_simple(model: GPTModel, train_loader: DataLoader, val_loader:
             tokens_seen += input_batch.numel();
             global_step += 1;
 
+
+            //optional evaluation step
             if global_step % eval_freq == 0 {
                   let (train_loss, val_loss) = evaluate_model(&model, &train_loader, &val_loader, eval_iter);
                   train_losses.push(train_loss);

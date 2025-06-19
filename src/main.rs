@@ -32,27 +32,14 @@ mod dataloader;
 
 
 fn main() {
-    //training fcn
+    //training legality
     let train = true;
     //seed
     tch::manual_seed(123);
 
-    //Reading the file in and making it a txt
-    let file_path = "./data/the_verdict.txt";
-    let mut file = File::open(file_path).expect("File Path Invalid");
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).expect("Contents Failed");
-
-    // Perform 90/10 split on raw string
-    let total_len = contents.len();
-    let split_index = (total_len as f64 * 0.8).floor() as usize;
-
-    let train_txt = contents[..split_index].to_string();
-    let valid_txt = contents[split_index..].to_string();
     
     //my own dataset - for preprocessing and making 
     let tokenizer = r50k_base().unwrap();
-    // let dataset = GPTDataset::init(contents, tokenizer.clone(), 4, 4);
     // For device and model requirements
     let vs = nn::VarStore::new(Device::Cpu);
     let root = &vs.root();
@@ -73,15 +60,6 @@ fn main() {
     //must declare AdamW this way, as .build requires self. vs is equivalent to model.parameters() in python
     let mut optimizer = adamw_config.build(&vs, 0.0005).unwrap();
 
-
-
-    //that was annoying but at least the data loader is implemented now. 
-    // let train_loader = create_dataloader_v1(train_txt, batch_size, model_config.context_length as usize, model_config.context_length as usize, 
-    //                                                     true, true, tokenizer.clone());
-    // let val_loader = create_dataloader_v1(valid_txt, batch_size, model_config.context_length as usize, model_config.context_length as usize, 
-    //                                                     false, false, tokenizer.clone());
-    // let (train_losses, val_losses, tokens_seen) = train_model_simple(model, train_loader, val_loader, optimizer, Device::Cpu, 
-    //     num_epochs, 5, 5, "Every effort moves you", tokenizer.clone(), train, batch_size);
 
     /* This is the Instruction Based Tuning Step - It uses a special format for instructions, such as the ALPACA version we are using. */
     let json_data = fs::read_to_string("data/instruction-data.json").expect("Failed to read file");
@@ -110,17 +88,39 @@ fn main() {
     let test_loader = DataLoader::init(Box::new(test_dataset), batch_size, false, false); // no shuffle, no drop
 
     let example_prompt = format_input(&validation_dataset.data[0]);
-    // for entry in &entries {
-    //     let prompt = format_input(entry);
-    //     println!("\n---\nPROMPT:\n{}\n\nEXPECTED:\n{}\n", prompt, entry.output);
-    // }
-    // println!("Train loader:");
-    // for (inputs, targets) in train_loader {
-    //     println!("inputs: {:?}, targets: {:?}", inputs.size(), targets.size());
-    // }
 
-    let (train_losses, val_losses, tokens_seen) = train_model_simple(model, train_loader, val_loader, optimizer, Device::Cpu, 
+
+    let (train_losses, val_losses, tokens_seen) = train_model_simple(&mut model, train_loader, val_loader, optimizer, Device::Cpu, 
         2, 5, 5, example_prompt, tokenizer.clone(), train, batch_size);
+
+    // This is where I text my model's output.
+    for entry in test_data.iter().take(3) {
+        let input_text = format_input(entry);
+
+        let input_ids = text_to_token_ids(&input_text, tokenizer.clone()).to_device(Device::Cpu);
+
+        let token_ids = generate(
+            &model,
+            input_ids,
+            256,                         // max_new_tokens
+            model_config.context_length,
+            1.0, Some(3), Some(50256), true                        // eos_id
+        );
+
+        let generated_text = token_ids_to_text(token_ids, tokenizer.clone());
+
+        // Remove the prompt portion and clean the model output
+        let response_text = generated_text[input_text.len()..]
+            .replace("### Response:", "")
+            .trim()
+            .to_string();
+
+        println!("Input:\n{}", input_text);
+        println!("\nCorrect response:\n>> {}", entry.output);
+        println!("\nModel response:\n>> {}", response_text);
+        println!("------------------------------------");
+    }
+
 
 
     return;
